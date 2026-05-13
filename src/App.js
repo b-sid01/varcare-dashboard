@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://asueiylnppjxlpbmzxmz.supabase.co',
-  'sb_publishable_URPMSXfHCT9qbM_IZXx8kg_gg9XWSsK'
+  'your-anon-key-here'
 );
 
 export default function App() {
@@ -71,8 +71,11 @@ export default function App() {
         }).eq('phone', apt.phone);
       } else {
         await supabase.from('patients').insert([{
-          name: apt.name, phone: apt.phone,
-          last_visit: new Date().toISOString(), visit_count: 1
+          name: apt.name,
+          phone: apt.phone,
+          age: apt.age,
+          last_visit: new Date().toISOString(),
+          visit_count: 1
         }]);
       }
     }
@@ -109,7 +112,7 @@ export default function App() {
     setSelectedMedicines([]);
     setNotes('');
     fetchPrescriptions(selectedPatient.id);
-    alert('Prescription saved and will be sent to patient!');
+    alert('Prescription saved!');
   }
 
   // PRESCRIPTION BUILDER SCREEN
@@ -122,7 +125,7 @@ export default function App() {
         <div style={styles.header}>
           <button onClick={() => setShowPrescription(false)} style={styles.backBtn}>← Back</button>
           <h1 style={styles.headerText}>New Prescription</h1>
-          <p style={styles.headerSub}>Patient: {selectedPatient.name}</p>
+          <p style={styles.headerSub}>Patient: {selectedPatient.name}{selectedPatient.age ? `, ${selectedPatient.age} yrs` : ''}</p>
         </div>
 
         <p style={styles.sectionTitle}>Search medicines</p>
@@ -214,7 +217,7 @@ export default function App() {
             />
 
             <button style={styles.saveBtn} onClick={savePrescription}>
-              Save & Send Prescription ✓
+              Save Prescription ✓
             </button>
           </>
         )}
@@ -228,9 +231,10 @@ export default function App() {
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <button onClick={() => { setSelectedPatient(null); }} style={styles.backBtn}>← Back</button>
+          <button onClick={() => setSelectedPatient(null)} style={styles.backBtn}>← Back</button>
           <h1 style={styles.headerText}>{selectedPatient.name}</h1>
           <p style={styles.headerSub}>📱 {selectedPatient.phone?.replace('whatsapp:+91', '+91 ')}</p>
+          {selectedPatient.age && <p style={styles.headerSub}>🎂 Age: {selectedPatient.age}</p>}
           <p style={styles.headerSub}>🏥 {selectedPatient.visit_count} visit(s)</p>
           <p style={styles.headerSub}>🕐 Last visit: {new Date(selectedPatient.last_visit).toLocaleDateString('en-IN')}</p>
         </div>
@@ -275,6 +279,7 @@ export default function App() {
     );
   }
 
+  // MAIN SCREEN
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -299,7 +304,7 @@ export default function App() {
               <div key={apt.id} style={styles.card}>
                 <div style={styles.cardTop}>
                   <div>
-                    <p style={styles.name}>{apt.name}</p>
+                    <p style={styles.name}>{apt.name}{apt.age ? `, ${apt.age} yrs` : ''}</p>
                     <p style={styles.time}>⏰ {apt.time}</p>
                     <p style={styles.phone}>📱 {apt.phone?.replace('whatsapp:+91', '+91 ')}</p>
                   </div>
@@ -340,7 +345,7 @@ export default function App() {
               <div key={patient.id} style={styles.card} onClick={() => { setSelectedPatient(patient); fetchPrescriptions(patient.id); }}>
                 <div style={styles.cardTop}>
                   <div>
-                    <p style={styles.name}>{patient.name}</p>
+                    <p style={styles.name}>{patient.name}{patient.age ? `, ${patient.age} yrs` : ''}</p>
                     <p style={styles.time}>📱 {patient.phone?.replace('whatsapp:+91', '+91 ')}</p>
                     <p style={styles.phone}>🕐 Last visit: {new Date(patient.last_visit).toLocaleDateString('en-IN')}</p>
                   </div>
@@ -393,4 +398,6 @@ const styles = {
   prescLine: { fontSize: 13, color: '#3a3d4a', margin: '4px 0', lineHeight: 1.6 },
   textarea: { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e0ddd5', fontSize: 14, minHeight: 80, boxSizing: 'border-box', marginBottom: 12 },
   saveBtn: { width: '100%', padding: '14px 0', background: '#1a6b3c', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginBottom: 32 },
+  selectBtn: { background: '#f7f6f2', border: '1px solid #e0ddd5', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer', color: '#3a3d4a' },
+  selectedBtn: { background: '#e8f5ee', border: '1px solid #1a6b3c', borderRadius: 8, padding: '6px 12px', fontSize: 13, cursor: 'pointer', color: '#1a6b3c', fontWeight: 600 },
 };
