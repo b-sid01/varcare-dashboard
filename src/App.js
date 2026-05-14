@@ -24,9 +24,9 @@ const G = {
 };
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-  body { background: ${G.bg}; font-family: 'DM Sans', sans-serif; }
+  body { background: ${G.bg}; font-family: 'Poppins', sans-serif; }
   button { font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s ease; }
   button:active { transform: scale(0.97); }
   input, select, textarea { font-family: 'DM Sans', sans-serif; }
