@@ -250,7 +250,7 @@ export default function App() {
                       {apt.age ? <span style={S.aptAge}>, {apt.age} yrs</span> : ''}
                     </div>
                     <div style={S.aptTime}>{apt.time}</div>
-                    <div style={S.metaText}>{apt.phone?.replace('whatsapp:+91', '+91 ')}</div>
+<div style={{ ...S.metaText, marginTop: 5 }}>{apt.phone?.replace('whatsapp:+91', '+91 ')}</div>
                   </div>
                   <StatusPill status={apt.status} />
                 </div>
@@ -347,10 +347,10 @@ const st = {
     fontFamily: "'Poppins', sans-serif",
   },
   greeting: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.38)',
-    marginTop: 4,
-    fontWeight: 300,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 6,
+    fontWeight: 400,
   },
   pendingPill: {
     background: '#F59E0B',
@@ -450,10 +450,13 @@ const st = {
     color: '#AAAAAA',
   },
   aptTime: {
-    fontSize: 13,
-    color: '#444',
-    marginBottom: 3,
-    fontWeight: 400,
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 6,
+    fontWeight: 500,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTop: '1px solid #F0F0F0',
   },
   metaText: {
     fontSize: 12,
