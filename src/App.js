@@ -7,6 +7,13 @@ const supabase = createClient(
 );
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
   const [screen, setScreen] = useState('appointments');
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -22,9 +29,37 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchAppointments(), fetchPatients(), fetchMedicines()])
-      .finally(() => setLoading(false));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      Promise.all([fetchAppointments(), fetchPatients(), fetchMedicines()])
+        .finally(() => setLoading(false));
+    }
+  }, [session]);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setLoginError('Incorrect email or password. Please try again.');
+    }
+    setLoginLoading(false);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
 
   async function fetchAppointments() {
     const { data } = await supabase.from('Appointments').select('*').order('created_at', { ascending: false });
@@ -44,25 +79,16 @@ export default function App() {
   }
   async function updateStatus(id, status, apt) {
     await supabase.from('Appointments').update({ status }).eq('id', id);
-    
     if (status === 'accepted') {
-      // Send WhatsApp confirmation to patient
       try {
         await fetch('https://varcare.onrender.com/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phone: apt.phone,
-            name: apt.name,
-            time: apt.time,
-            doctorName: 'Dr. Sharma'
-          })
+          body: JSON.stringify({ phone: apt.phone, name: apt.name, time: apt.time, doctorName: 'Dr. Sharma' })
         });
       } catch (e) {
         console.error('Failed to send confirmation:', e);
       }
-
-      // Add to patients table
       const { data: existing } = await supabase.from('patients').select('*').eq('phone', apt.phone).single();
       if (existing) {
         await supabase.from('patients').update({ last_visit: new Date().toISOString(), visit_count: (existing.visit_count || 0) + 1 }).eq('phone', apt.phone);
@@ -98,6 +124,57 @@ export default function App() {
 
   const pending = appointments.filter(a => !a.status || a.status === 'pending').length;
   const S = st;
+
+  // AUTH LOADING
+  if (authLoading) {
+    return (
+      <div style={{ ...S.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={S.loadingText}>Loading...</div>
+      </div>
+    );
+  }
+
+  // LOGIN SCREEN
+  if (!session) {
+    return (
+      <div style={{ ...S.page, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={S.loginBox}>
+          <div style={S.loginLogo}>Varcare</div>
+          <div style={S.loginSub}>Doctor Login</div>
+
+          <div style={S.loginForm}>
+            <div style={S.inputGroup}>
+              <div style={S.inputLabel}>Email</div>
+              <input
+                style={S.loginInput}
+                type="email"
+                placeholder="doctor@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin(e)}
+              />
+            </div>
+            <div style={S.inputGroup}>
+              <div style={S.inputLabel}>Password</div>
+              <input
+                style={S.loginInput}
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin(e)}
+              />
+            </div>
+            {loginError && <div style={S.loginError}>{loginError}</div>}
+            <button style={S.loginBtn} onClick={handleLogin} disabled={loginLoading}>
+              {loginLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+          <div style={S.loginFooter}>Secure clinic management by Varcare</div>
+        </div>
+      </div>
+    );
+  }
 
   // PRESCRIPTION SCREEN
   if (showPrescription) {
@@ -225,13 +302,14 @@ export default function App() {
             <div style={S.logo}>Varcare</div>
             <div style={S.greeting}>Good {getTimeOfDay()}, Doctor</div>
           </div>
-          {pending > 0 && (
-            <div style={S.pendingPill}>
-              <span style={S.pendingDot} />
-              {pending} pending
-            </div>
-          )}
+          <button onClick={handleLogout} style={S.logoutBtn}>Sign out</button>
         </div>
+        {pending > 0 && (
+          <div style={S.pendingPill}>
+            <span style={S.pendingDot} />
+            {pending} pending
+          </div>
+        )}
         <div style={S.statsRow}>
           {[
             { label: 'Total', value: appointments.length },
@@ -267,8 +345,8 @@ export default function App() {
                       {apt.name}
                       {apt.age ? <span style={S.aptAge}>, {apt.age} yrs</span> : ''}
                     </div>
-                    <div style={S.aptTime}>{apt.time}</div>
-<div style={{ ...S.metaText, marginTop: 5 }}>{apt.phone?.replace('whatsapp:+91', '+91 ')}</div>
+                    <div style={{ ...S.aptTime, marginTop: 8, paddingTop: 8, borderTop: '1px solid #F0F0F0' }}>{apt.time}</div>
+                    <div style={{ ...S.metaText, marginTop: 5 }}>{apt.phone?.replace('whatsapp:+91', '+91 ')}</div>
                   </div>
                   <StatusPill status={apt.status} />
                 </div>
@@ -345,351 +423,60 @@ function getTimeOfDay() {
 }
 
 const st = {
-  page: {
-    maxWidth: 480,
-    margin: '0 auto',
-    minHeight: '100vh',
-    background: '#F2F2F2',
-    fontFamily: "'Poppins', sans-serif",
-  },
-  header: {
-    background: '#111111',
-    borderRadius: '0 0 28px 28px',
-    padding: '32px 22px 26px',
-  },
-  logo: {
-    fontSize: 30,
-    fontWeight: 700,
-    color: '#FFFFFF',
-    letterSpacing: '-1px',
-    fontFamily: "'Poppins', sans-serif",
-  },
-  greeting: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 6,
-    fontWeight: 400,
-  },
-  pendingPill: {
-    background: '#F59E0B',
-    borderRadius: 99,
-    padding: '7px 16px',
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 7,
-  },
-  pendingDot: {
-    width: 7,
-    height: 7,
-    background: '#fff',
-    borderRadius: '50%',
-    display: 'inline-block',
-  },
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr',
-    gap: 10,
-    marginTop: 22,
-  },
-  statBox: {
-    background: 'rgba(255,255,255,0.07)',
-    borderRadius: 16,
-    padding: '16px 14px',
-  },
-  statNum: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: '#FFFFFF',
-    letterSpacing: '-0.5px',
-    fontFamily: "'Poppins', sans-serif",
-  },
-  statLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 3,
-    fontWeight: 400,
-  },
-  tabRow: {
-    display: 'flex',
-    background: '#fff',
-    margin: '18px 16px 0',
-    borderRadius: 16,
-    padding: 5,
-    gap: 5,
-    boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
-  },
-  tab: {
-    flex: 1,
-    padding: '11px 0',
-    border: 'none',
-    background: 'transparent',
-    fontSize: 13,
-    fontWeight: 500,
-    color: '#AAAAAA',
-    borderRadius: 12,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  tabActive: {
-    flex: 1,
-    padding: '11px 0',
-    border: 'none',
-    background: '#111',
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#fff',
-    borderRadius: 12,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
+  page: { maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#F2F2F2', fontFamily: "'Poppins', sans-serif" },
+  header: { background: '#111111', borderRadius: '0 0 28px 28px', padding: '32px 22px 26px' },
+  logo: { fontSize: 30, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-1px', fontFamily: "'Poppins', sans-serif" },
+  greeting: { fontSize: 13, color: 'rgba(255,255,255,0.38)', marginTop: 4, fontWeight: 300 },
+  logoutBtn: { background: 'rgba(255,255,255,0.08)', border: 'none', color: 'rgba(255,255,255,0.5)', padding: '7px 14px', borderRadius: 99, fontSize: 12, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
+  pendingPill: { background: '#F59E0B', borderRadius: 99, padding: '7px 16px', fontSize: 12, fontWeight: 600, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 14 },
+  pendingDot: { width: 7, height: 7, background: '#fff', borderRadius: '50%', display: 'inline-block' },
+  statsRow: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 16 },
+  statBox: { background: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: '16px 14px' },
+  statNum: { fontSize: 26, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.5px', fontFamily: "'Poppins', sans-serif" },
+  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3, fontWeight: 400 },
+  tabRow: { display: 'flex', background: '#fff', margin: '18px 16px 0', borderRadius: 16, padding: 5, gap: 5, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' },
+  tab: { flex: 1, padding: '11px 0', border: 'none', background: 'transparent', fontSize: 13, fontWeight: 500, color: '#AAAAAA', borderRadius: 12, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
+  tabActive: { flex: 1, padding: '11px 0', border: 'none', background: '#111', fontSize: 13, fontWeight: 600, color: '#fff', borderRadius: 12, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
   body: { padding: '16px' },
-  card: {
-    background: '#FFFFFF',
-    borderRadius: 20,
-    padding: '18px 16px',
-    marginBottom: 10,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)',
-  },
-  aptName: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: '#111',
-    marginBottom: 5,
-    fontFamily: "'Poppins', sans-serif",
-  },
-  aptAge: {
-    fontSize: 13,
-    fontWeight: 400,
-    color: '#AAAAAA',
-  },
-  aptTime: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
-    fontWeight: 500,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTop: '1px solid #F0F0F0',
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#BBBBBB',
-    marginTop: 2,
-  },
-  btnRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 8,
-  },
-  acceptBtn: {
-    padding: '11px',
-    background: '#DCFCE7',
-    color: '#15803D',
-    border: 'none',
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 600,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    letterSpacing: '0.01em',
-  },
-  rejectBtn: {
-    padding: '11px',
-    background: '#FEE2E2',
-    color: '#DC2626',
-    border: 'none',
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 600,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    letterSpacing: '0.01em',
-  },
-  visitBadge: {
-    background: '#111',
-    borderRadius: 16,
-    padding: '12px 16px',
-    textAlign: 'center',
-    minWidth: 60,
-  },
-  visitNum: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#fff',
-    fontFamily: "'Poppins', sans-serif",
-  },
-  visitLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: 2,
-  },
-  backBtn: {
-    background: 'rgba(255,255,255,0.1)',
-    border: 'none',
-    color: '#fff',
-    padding: '7px 16px',
-    borderRadius: 99,
-    fontSize: 12,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 700,
-    color: '#fff',
-    letterSpacing: '-0.3px',
-    fontFamily: "'Poppins', sans-serif",
-  },
-  headerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: 4,
-  },
-  primaryBtn: {
-    width: '100%',
-    padding: '15px',
-    background: '#111',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 16,
-    fontSize: 14,
-    fontWeight: 600,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    marginBottom: 20,
-    letterSpacing: '0.01em',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '13px 16px',
-    borderRadius: 14,
-    border: '1px solid #E8E8E8',
-    fontSize: 14,
-    fontFamily: "'Poppins', sans-serif",
-    background: '#fff',
-    color: '#111',
-    outline: 'none',
-    marginBottom: 16,
-    boxSizing: 'border-box',
-  },
+  card: { background: '#FFFFFF', borderRadius: 20, padding: '18px 16px', marginBottom: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)' },
+  aptName: { fontSize: 15, fontWeight: 600, color: '#111', marginBottom: 5, fontFamily: "'Poppins', sans-serif" },
+  aptAge: { fontSize: 13, fontWeight: 400, color: '#AAAAAA' },
+  aptTime: { fontSize: 14, color: '#555', marginBottom: 6, fontWeight: 500 },
+  metaText: { fontSize: 12, color: '#BBBBBB', marginTop: 2 },
+  btnRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
+  acceptBtn: { padding: '11px', background: '#DCFCE7', color: '#15803D', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
+  rejectBtn: { padding: '11px', background: '#FEE2E2', color: '#DC2626', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
+  visitBadge: { background: '#111', borderRadius: 16, padding: '12px 16px', textAlign: 'center', minWidth: 60 },
+  visitNum: { fontSize: 22, fontWeight: 700, color: '#fff', fontFamily: "'Poppins', sans-serif" },
+  visitLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  backBtn: { background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '7px 16px', borderRadius: 99, fontSize: 12, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' },
+  headerTitle: { fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', fontFamily: "'Poppins', sans-serif" },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 },
+  primaryBtn: { width: '100%', padding: '15px', background: '#111', color: '#fff', border: 'none', borderRadius: 16, fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer', marginBottom: 20 },
+  searchInput: { width: '100%', padding: '13px 16px', borderRadius: 14, border: '1px solid #E8E8E8', fontSize: 14, fontFamily: "'Poppins', sans-serif", background: '#fff', color: '#111', outline: 'none', marginBottom: 16, boxSizing: 'border-box' },
   medName: { fontSize: 14, fontWeight: 600, color: '#111' },
   medDose: { fontWeight: 400, color: '#999', fontSize: 13 },
-  pillBtnLight: {
-    background: '#F2F2F2',
-    border: 'none',
-    borderRadius: 99,
-    padding: '7px 16px',
-    fontSize: 12,
-    fontWeight: 500,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    color: '#444',
-  },
-  pillBtnDark: {
-    background: '#111',
-    border: 'none',
-    borderRadius: 99,
-    padding: '7px 16px',
-    fontSize: 12,
-    fontWeight: 600,
-    fontFamily: "'Poppins', sans-serif",
-    cursor: 'pointer',
-    color: '#fff',
-  },
-  freqGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 10,
-    marginTop: 14,
-    paddingTop: 14,
-    borderTop: '1px solid #F0F0F0',
-  },
-  freqLabel: {
-    fontSize: 10,
-    color: '#AAA',
-    fontWeight: 500,
-    marginBottom: 6,
-    letterSpacing: '0.06em',
-  },
-  select: {
-    width: '100%',
-    padding: '9px 10px',
-    borderRadius: 10,
-    border: '1px solid #E8E8E8',
-    fontSize: 12,
-    fontFamily: "'Poppins', sans-serif",
-    color: '#111',
-    background: '#fff',
-  },
-  summaryBox: {
-    background: '#F9F9F9',
-    borderRadius: 16,
-    padding: '16px',
-    marginBottom: 14,
-    border: '1px solid #EFEFEF',
-  },
-  summaryLine: {
-    fontSize: 13,
-    color: '#111',
-    padding: '6px 0',
-    borderBottom: '1px solid #EFEFEF',
-    lineHeight: 1.6,
-  },
-  textarea: {
-    width: '100%',
-    padding: '14px 16px',
-    borderRadius: 14,
-    border: '1px solid #E8E8E8',
-    fontSize: 13,
-    fontFamily: "'Poppins', sans-serif",
-    minHeight: 90,
-    resize: 'none',
-    background: '#fff',
-    color: '#111',
-    outline: 'none',
-    marginBottom: 14,
-    boxSizing: 'border-box',
-  },
-  prescDate: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#AAA',
-    letterSpacing: '0.06em',
-    marginBottom: 10,
-  },
-  prescLine: {
-    fontSize: 13,
-    color: '#333',
-    padding: '5px 0',
-    borderBottom: '1px solid #F5F5F5',
-    lineHeight: 1.6,
-  },
-  prescNote: {
-    fontSize: 12,
-    color: '#AAA',
-    fontStyle: 'italic',
-    marginTop: 10,
-    paddingTop: 10,
-    borderTop: '1px solid #F5F5F5',
-  },
-  emptySmall: {
-    textAlign: 'center',
-    padding: '24px',
-    fontSize: 13,
-    color: '#AAA',
-    background: '#F9F9F9',
-    borderRadius: 14,
-    marginBottom: 16,
-  },
-  loadingText: {
-    textAlign: 'center',
-    padding: 40,
-    color: '#AAA',
-    fontSize: 14,
-  },
+  pillBtnLight: { background: '#F2F2F2', border: 'none', borderRadius: 99, padding: '7px 16px', fontSize: 12, fontWeight: 500, fontFamily: "'Poppins', sans-serif", cursor: 'pointer', color: '#444' },
+  pillBtnDark: { background: '#111', border: 'none', borderRadius: 99, padding: '7px 16px', fontSize: 12, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer', color: '#fff' },
+  freqGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid #F0F0F0' },
+  freqLabel: { fontSize: 10, color: '#AAA', fontWeight: 500, marginBottom: 6, letterSpacing: '0.06em' },
+  select: { width: '100%', padding: '9px 10px', borderRadius: 10, border: '1px solid #E8E8E8', fontSize: 12, fontFamily: "'Poppins', sans-serif", color: '#111', background: '#fff' },
+  summaryBox: { background: '#F9F9F9', borderRadius: 16, padding: '16px', marginBottom: 14, border: '1px solid #EFEFEF' },
+  summaryLine: { fontSize: 13, color: '#111', padding: '6px 0', borderBottom: '1px solid #EFEFEF', lineHeight: 1.6 },
+  textarea: { width: '100%', padding: '14px 16px', borderRadius: 14, border: '1px solid #E8E8E8', fontSize: 13, fontFamily: "'Poppins', sans-serif", minHeight: 90, resize: 'none', background: '#fff', color: '#111', outline: 'none', marginBottom: 14, boxSizing: 'border-box' },
+  prescDate: { fontSize: 11, fontWeight: 600, color: '#AAA', letterSpacing: '0.06em', marginBottom: 10 },
+  prescLine: { fontSize: 13, color: '#333', padding: '5px 0', borderBottom: '1px solid #F5F5F5', lineHeight: 1.6 },
+  prescNote: { fontSize: 12, color: '#AAA', fontStyle: 'italic', marginTop: 10, paddingTop: 10, borderTop: '1px solid #F5F5F5' },
+  emptySmall: { textAlign: 'center', padding: '24px', fontSize: 13, color: '#AAA', background: '#F9F9F9', borderRadius: 14, marginBottom: 16 },
+  loadingText: { textAlign: 'center', padding: 40, color: '#AAA', fontSize: 14 },
+  loginBox: { maxWidth: 380, margin: '0 auto', padding: '40px 24px' },
+  loginLogo: { fontSize: 34, fontWeight: 700, color: '#111', letterSpacing: '-1px', fontFamily: "'Poppins', sans-serif", marginBottom: 6 },
+  loginSub: { fontSize: 14, color: '#AAA', marginBottom: 36, fontWeight: 400 },
+  loginForm: { display: 'flex', flexDirection: 'column', gap: 16 },
+  inputGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
+  inputLabel: { fontSize: 12, fontWeight: 500, color: '#555', letterSpacing: '0.02em' },
+  loginInput: { padding: '14px 16px', borderRadius: 14, border: '1.5px solid #E8E8E8', fontSize: 14, fontFamily: "'Poppins', sans-serif", color: '#111', outline: 'none', background: '#fff' },
+  loginError: { background: '#FEE2E2', color: '#DC2626', borderRadius: 10, padding: '10px 14px', fontSize: 13 },
+  loginBtn: { padding: '15px', background: '#111', color: '#fff', border: 'none', borderRadius: 14, fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer', marginTop: 4 },
+  loginFooter: { fontSize: 12, color: '#CCC', textAlign: 'center', marginTop: 32 },
 };
