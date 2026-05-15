@@ -44,7 +44,25 @@ export default function App() {
   }
   async function updateStatus(id, status, apt) {
     await supabase.from('Appointments').update({ status }).eq('id', id);
+    
     if (status === 'accepted') {
+      // Send WhatsApp confirmation to patient
+      try {
+        await fetch('https://varcare.onrender.com/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: apt.phone,
+            name: apt.name,
+            time: apt.time,
+            doctorName: 'Dr. Sharma'
+          })
+        });
+      } catch (e) {
+        console.error('Failed to send confirmation:', e);
+      }
+
+      // Add to patients table
       const { data: existing } = await supabase.from('patients').select('*').eq('phone', apt.phone).single();
       if (existing) {
         await supabase.from('patients').update({ last_visit: new Date().toISOString(), visit_count: (existing.visit_count || 0) + 1 }).eq('phone', apt.phone);
