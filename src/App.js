@@ -51,7 +51,6 @@ export default function App() {
   const [duration, setDuration] = useState({});
   const [searchMed, setSearchMed] = useState('');
   const [searchPatient, setSearchPatient] = useState('');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -66,8 +65,7 @@ export default function App() {
 
   useEffect(() => {
     if (session) {
-      Promise.all([fetchAppointments(), fetchPatients(), fetchMedicines(), fetchAllPrescriptions()])
-        .finally(() => setLoading(false));
+      Promise.all([fetchAppointments(), fetchPatients(), fetchMedicines(), fetchAllPrescriptions()]);
     }
   }, [session]);
 
