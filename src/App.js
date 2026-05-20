@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://asueiylnppjxlpbmzxmz.supabase.co',
+  'yoursb_publishable_URPMSXfHCT9qbM_IZXx8kg_gg9XWSsK'
+);
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
-
   :root {
     --bg: #0F1117;
     --surface: #161B26;
@@ -12,12 +17,16 @@ const styles = `
     --border-hover: rgba(255,255,255,0.13);
     --accent: #4A9EFF;
     --accent-dim: rgba(74,158,255,0.12);
+    --accent-border: rgba(74,158,255,0.25);
     --green: #34D399;
     --green-dim: rgba(52,211,153,0.12);
+    --green-border: rgba(52,211,153,0.25);
     --amber: #FBBF24;
     --amber-dim: rgba(251,191,36,0.10);
+    --amber-border: rgba(251,191,36,0.25);
     --red: #F87171;
     --red-dim: rgba(248,113,113,0.10);
+    --red-border: rgba(248,113,113,0.25);
     --text-1: #E8ECF4;
     --text-2: #8B93A8;
     --text-3: #505668;
@@ -26,679 +35,689 @@ const styles = `
     --font: 'DM Sans', sans-serif;
     --mono: 'DM Mono', monospace;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: var(--font); color: var(--text-1); }
 
-  body {
-    background: var(--bg);
-    font-family: var(--font);
-    color: var(--text-1);
-  }
+  .vc-app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg); font-family: var(--font); padding-bottom: 80px; }
 
-  .vc-shell {
-    display: flex;
-    min-height: 100vh;
-    font-family: var(--font);
-    color: var(--text-1);
-    background: var(--bg);
-    font-size: 13.5px;
-    line-height: 1.5;
-  }
+  /* LOGIN */
+  .vc-login { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg); font-family: var(--font); display: flex; flex-direction: column; justify-content: center; padding: 0 28px; }
+  .vc-login-logo { font-size: 40px; font-weight: 300; color: var(--text-1); letter-spacing: -2px; line-height: 1; }
+  .vc-login-sub { font-size: 13px; color: var(--text-3); margin-top: 6px; }
+  .vc-login-form { margin-top: 48px; display: flex; flex-direction: column; gap: 16px; }
+  .vc-field-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .vc-input { width: 100%; padding: 13px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border); font-size: 14px; font-family: var(--font); color: var(--text-1); background: var(--surface); outline: none; transition: border-color 0.15s; }
+  .vc-input:focus { border-color: var(--accent-border); }
+  .vc-input::placeholder { color: var(--text-3); }
+  .vc-btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-lg); font-size: 14px; font-weight: 500; font-family: var(--font); cursor: pointer; margin-top: 8px; transition: opacity 0.15s; }
+  .vc-btn-primary:hover { opacity: 0.9; }
+  .vc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .vc-error { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); border-radius: var(--radius); padding: 12px 16px; font-size: 13px; }
 
-  /* SIDEBAR */
-  .vc-sidebar {
-    width: 220px;
-    min-width: 220px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 20px 0;
-    gap: 4px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-  }
+  /* HEADER */
+  .vc-header { background: var(--surface); padding: 52px 20px 20px; border-bottom: 1px solid var(--border); }
+  .vc-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .vc-brand { font-size: 28px; font-weight: 300; color: var(--text-1); letter-spacing: -1px; }
+  .vc-greeting { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .vc-signout { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); padding: 7px 14px; border-radius: 99px; font-size: 12px; font-family: var(--font); cursor: pointer; }
 
-  .vc-logo-wrap {
-    padding: 0 18px 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-  }
-
-  .vc-logo {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-  }
-
-  .vc-logo-mark {
-    width: 30px; height: 30px;
-    background: var(--accent-dim);
-    border: 1px solid rgba(74,158,255,0.25);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .vc-logo-mark svg {
-    width: 15px; height: 15px;
-    stroke: var(--accent); fill: none; stroke-width: 1.8;
-  }
-
-  .vc-logo-name {
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    color: var(--text-1);
-  }
-
-  .vc-logo-sub {
-    font-size: 10px;
-    color: var(--text-3);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-top: 1px;
-  }
-
-  .vc-nav-section { padding: 4px 10px; }
-
-  .vc-nav-label {
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-3);
-    padding: 8px 8px 4px;
-  }
-
-  .vc-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    color: var(--text-2);
-    transition: all 0.15s;
-    font-size: 13px;
-    font-weight: 400;
-    user-select: none;
-  }
-
-  .vc-nav-item:hover { background: var(--surface-hover); color: var(--text-1); }
-
-  .vc-nav-item.active {
-    background: var(--accent-dim);
-    color: var(--accent);
-    font-weight: 500;
-  }
-
-  .vc-badge {
-    margin-left: auto;
-    background: var(--accent-dim);
-    color: var(--accent);
-    font-size: 10px;
-    padding: 1px 6px;
-    border-radius: 20px;
-    font-family: var(--mono);
-    font-weight: 400;
-  }
-
-  .vc-badge.green { background: var(--green-dim); color: var(--green); }
-  .vc-badge.amber { background: var(--amber-dim); color: var(--amber); }
-
-  .vc-sidebar-footer {
-    margin-top: auto;
-    padding: 16px 10px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .vc-doctor-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .vc-doctor-card:hover { background: var(--surface-hover); }
-
-  .vc-avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #1E3A5F 0%, #2D5A9B 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 500; color: var(--accent);
-    flex-shrink: 0;
-    border: 1px solid rgba(74,158,255,0.2);
-  }
-
-  .vc-doctor-name { font-size: 12.5px; font-weight: 500; color: var(--text-1); }
-  .vc-doctor-role { font-size: 11px; color: var(--text-3); }
-
-  /* MAIN */
-  .vc-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-  .vc-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 28px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .vc-page-title { font-size: 15px; font-weight: 500; color: var(--text-1); }
-  .vc-page-date { font-size: 12px; color: var(--text-3); margin-top: 2px; }
-
-  .vc-topbar-right { display: flex; align-items: center; gap: 12px; }
-
-  .vc-search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    width: 200px;
-    cursor: text;
-  }
-
-  .vc-search span { font-size: 12.5px; color: var(--text-3); }
-
-  .vc-icon-btn {
-    width: 34px; height: 34px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    color: var(--text-2);
-    position: relative;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .vc-icon-btn:hover { border-color: var(--border-hover); color: var(--text-1); }
-
-  .vc-notif-dot {
-    position: absolute; top: 6px; right: 6px;
-    width: 6px; height: 6px;
-    background: var(--red); border-radius: 50%;
-    border: 1.5px solid var(--surface);
-  }
+  /* STAT CARDS */
+  .vc-stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .vc-stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+  .vc-stat-val { font-size: 26px; font-weight: 300; letter-spacing: -1px; color: var(--text-1); }
+  .vc-stat-lbl { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 
   /* CONTENT */
-  .vc-content {
-    padding: 24px 28px;
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
+  .vc-content { padding: 16px; }
 
-  /* STATS */
-  .vc-stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-  }
+  /* SECTION LABEL */
+  .vc-section { font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin: 16px 0 8px; }
 
-  .vc-stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 16px 18px;
-  }
+  /* CARDS */
+  .vc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; }
+  .vc-card:hover { background: var(--surface-hover); }
+  .vc-card-row { display: flex; justify-content: space-between; align-items: center; }
 
-  .vc-stat-top {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px;
-  }
+  /* PATIENT NAME */
+  .vc-patient-name { font-size: 15px; font-weight: 500; color: var(--text-1); }
+  .vc-patient-age { font-size: 13px; font-weight: 400; color: var(--text-3); }
+  .vc-patient-sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
-  .vc-stat-label { font-size: 11.5px; color: var(--text-3); letter-spacing: 0.3px; }
+  /* NEXT PATIENT CARD */
+  .vc-next-card { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 10px; }
+  .vc-next-name { font-size: 22px; font-weight: 300; color: var(--text-1); }
+  .vc-next-time { font-size: 13px; color: var(--text-2); margin-top: 4px; margin-bottom: 16px; }
+  .vc-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vc-btn-accept { padding: 11px; background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; }
+  .vc-btn-reject { padding: 11px; background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; }
+  .vc-confirmed-badge { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); border-radius: var(--radius); padding: 10px; text-align: center; font-size: 13px; font-weight: 500; }
 
-  .vc-stat-icon {
-    width: 28px; height: 28px;
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-  }
+  /* PENDING ALERT */
+  .vc-pending-alert { background: var(--amber-dim); border: 1px solid var(--amber-border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--amber); }
+  .vc-pending-dot { width: 7px; height: 7px; background: var(--amber); border-radius: 50%; flex-shrink: 0; }
 
-  .vc-stat-icon.blue { background: var(--accent-dim); color: var(--accent); }
-  .vc-stat-icon.green { background: var(--green-dim); color: var(--green); }
-  .vc-stat-icon.amber { background: var(--amber-dim); color: var(--amber); }
+  /* STATUS PILL */
+  .vc-pill { border-radius: 99px; padding: 4px 12px; font-size: 11px; font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .vc-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .pill-confirmed { background: var(--green-dim); color: var(--green); }
+  .pill-pending { background: var(--amber-dim); color: var(--amber); }
+  .pill-rejected { background: var(--red-dim); color: var(--red); }
+  .pill-cancelled { background: rgba(255,255,255,0.06); color: var(--text-3); }
 
-  .vc-stat-value {
-    font-size: 26px; font-weight: 300;
-    color: var(--text-1); letter-spacing: -0.5px; line-height: 1;
-  }
+  /* VISIT COUNT BADGE */
+  .vc-visit-badge { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius); padding: 10px 14px; text-align: center; min-width: 52px; }
+  .vc-visit-num { font-size: 20px; font-weight: 300; color: var(--accent); }
+  .vc-visit-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; }
 
-  .vc-stat-unit { font-size: 13px; font-weight: 400; color: var(--text-3); margin-left: 2px; }
+  /* FAB */
+  .vc-fab { position: fixed; bottom: 88px; right: calc(50% - 228px); background: var(--accent); border: none; border-radius: 99px; width: 52px; height: 52px; font-size: 26px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(74,158,255,0.3); z-index: 40; }
 
-  .vc-stat-change { margin-top: 8px; font-size: 11px; color: var(--text-3); }
-  .vc-up { color: var(--green); }
-  .vc-down { color: var(--red); }
-  .vc-warn { color: var(--amber); }
+  /* BOTTOM NAV */
+  .vc-bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 50; padding-bottom: 6px; }
+  .vc-nav-btn { flex: 1; padding: 10px 0 4px; border: none; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-3); font-family: var(--font); transition: color 0.15s; }
+  .vc-nav-btn.active { color: var(--accent); }
+  .vc-nav-label { font-size: 10px; font-weight: 400; }
+  .vc-nav-btn.active .vc-nav-label { font-weight: 500; }
 
-  /* WA BANNER */
-  .vc-wa-banner {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
+  /* MODAL */
+  .vc-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+  .vc-modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 24px 48px; width: 100%; max-width: 480px; border: 1px solid var(--border); border-bottom: none; }
+  .vc-modal-handle { width: 36px; height: 3px; background: var(--border-hover); border-radius: 99px; margin: 0 auto 20px; }
+  .vc-modal-title { font-size: 18px; font-weight: 500; color: var(--text-1); margin-bottom: 4px; }
+  .vc-modal-sub { font-size: 12px; color: var(--text-3); margin-bottom: 20px; }
+  .vc-modal-field { margin-bottom: 14px; }
+  .vc-modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
+  .vc-btn-cancel { padding: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; color: var(--text-2); }
 
-  .vc-wa-icon {
-    width: 38px; height: 38px;
-    background: rgba(37,211,102,0.1);
-    border: 1px solid rgba(37,211,102,0.2);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
+  /* BACK HEADER */
+  .vc-back-header { background: var(--surface); padding: 52px 20px 20px; border-bottom: 1px solid var(--border); }
+  .vc-back-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); padding: 7px 14px; border-radius: 99px; font-size: 12px; font-family: var(--font); cursor: pointer; margin-bottom: 16px; }
+  .vc-detail-name { font-size: 24px; font-weight: 300; color: var(--text-1); }
+  .vc-detail-sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
-  .vc-wa-icon svg { width: 18px; height: 18px; }
-  .vc-wa-title { font-size: 12.5px; font-weight: 500; color: var(--text-1); }
-  .vc-wa-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+  /* PRESCRIPTION */
+  .vc-med-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; transition: border-color 0.15s; }
+  .vc-med-card.selected { border-color: var(--accent-border); background: var(--accent-dim); }
+  .vc-med-name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .vc-med-dose { font-size: 12px; font-weight: 400; color: var(--text-3); }
+  .vc-med-unit { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+  .vc-med-row { display: flex; justify-content: space-between; align-items: center; }
+  .vc-btn-add { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; font-size: 12px; font-weight: 500; font-family: var(--font); cursor: pointer; }
+  .vc-btn-add.added { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-border); }
+  .vc-med-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .vc-select-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .vc-select { width: 100%; padding: 9px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 12px; font-family: var(--font); color: var(--text-1); background: var(--surface-2); outline: none; }
+  .vc-selected-summary { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 14px; }
+  .vc-selected-line { font-size: 13px; color: var(--text-2); padding: 5px 0; border-bottom: 1px solid var(--border); line-height: 1.6; }
+  .vc-selected-line:last-child { border-bottom: none; }
+  .vc-textarea { width: 100%; padding: 12px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border); font-size: 13px; font-family: var(--font); color: var(--text-1); background: var(--surface); outline: none; min-height: 80px; resize: none; }
+  .vc-textarea::placeholder { color: var(--text-3); }
 
-  .vc-wa-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  /* PRESCRIPTION HISTORY */
+  .vc-rx-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; }
+  .vc-rx-date { font-size: 11px; font-weight: 500; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 10px; }
+  .vc-rx-line { font-size: 13px; color: var(--text-2); padding: 4px 0; border-bottom: 1px solid var(--border); line-height: 1.6; }
+  .vc-rx-line:last-child { border-bottom: none; }
+  .vc-rx-notes { font-size: 12px; color: var(--text-3); font-style: italic; margin-top: 8px; }
 
-  .vc-pulse-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 0 3px var(--green-dim);
-    flex-shrink: 0;
-  }
+  /* MORE TAB */
+  .vc-stats-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+  .vc-stats-row-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .vc-stats-row-item:last-child { border-bottom: none; }
+  .vc-stats-item-label { font-size: 13px; color: var(--text-2); }
+  .vc-stats-item-val { font-size: 18px; font-weight: 300; color: var(--text-1); }
+  .vc-btn-signout { width: 100%; padding: 14px; background: var(--red-dim); color: var(--red); border: 1px solid var(--red-border); border-radius: var(--radius-lg); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; }
 
-  .vc-wa-stat { font-size: 12px; color: var(--text-3); }
-  .vc-wa-stat strong { color: var(--green); font-weight: 500; }
+  /* EMPTY */
+  .vc-empty { text-align: center; padding: 40px 20px; border: 1px dashed var(--border); border-radius: var(--radius-lg); margin-bottom: 14px; }
+  .vc-empty-text { font-size: 14px; color: var(--text-3); }
+  .vc-empty-sub { font-size: 12px; color: var(--text-3); opacity: 0.6; margin-top: 4px; }
 
-  /* TWO COL */
-  .vc-two-col {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 14px;
-  }
-
-  /* CARD */
-  .vc-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
-
-  .vc-card-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .vc-card-title { font-size: 13px; font-weight: 500; color: var(--text-1); }
-  .vc-card-action { font-size: 11.5px; color: var(--accent); cursor: pointer; }
-
-  /* TABLE */
-  .vc-table-head {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1fr 1fr 80px;
-    padding: 8px 18px;
-    gap: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .vc-th {
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--text-3);
-  }
-
-  .vc-table-row {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1fr 1fr 80px;
-    padding: 11px 18px;
-    gap: 8px;
-    border-bottom: 1px solid var(--border);
-    align-items: center;
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-
-  .vc-table-row:hover { background: var(--surface-hover); }
-  .vc-table-row:last-child { border-bottom: none; }
-
-  .vc-patient-cell { display: flex; align-items: center; gap: 10px; }
-
-  .vc-mini-avatar {
-    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 500;
-  }
-
-  .ma-blue   { background: rgba(74,158,255,0.15);  color: var(--accent); }
-  .ma-green  { background: rgba(52,211,153,0.15);  color: var(--green); }
-  .ma-amber  { background: rgba(251,191,36,0.12);  color: var(--amber); }
-  .ma-red    { background: rgba(248,113,113,0.12); color: var(--red); }
-  .ma-purple { background: rgba(167,139,250,0.12); color: #A78BFA; }
-
-  .vc-cell-main { font-size: 12.5px; color: var(--text-1); }
-  .vc-cell-sub  { font-size: 11px;   color: var(--text-3); }
-  .vc-cell-mono { font-size: 12px; font-family: var(--mono); color: var(--text-1); }
-
-  .vc-status {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 9px; border-radius: 20px; font-size: 11px;
-  }
-
-  .vc-status::before {
-    content: ''; width: 5px; height: 5px;
-    border-radius: 50%; background: currentColor;
-  }
-
-  .vc-status.confirmed { background: var(--green-dim); color: var(--green); }
-  .vc-status.pending   { background: var(--amber-dim); color: var(--amber); }
-  .vc-status.cancelled { background: var(--red-dim);   color: var(--red); }
-
-  /* SCHEDULE */
-  .vc-sched-label {
-    padding: 12px 18px 6px;
-    font-size: 11px; color: var(--text-3);
-    letter-spacing: 0.5px; text-transform: uppercase;
-  }
-
-  .vc-appt-slot {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 18px;
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-
-  .vc-appt-slot:hover { background: var(--surface-hover); }
-
-  .vc-time {
-    font-size: 11px; color: var(--text-3);
-    font-family: var(--mono); width: 46px;
-    flex-shrink: 0; text-align: right;
-  }
-
-  .vc-appt-bar { width: 3px; height: 36px; border-radius: 3px; flex-shrink: 0; }
-
-  .vc-appt-name { font-size: 12.5px; color: var(--text-1); }
-  .vc-appt-type { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-  .vc-appt-dur  { margin-left: auto; font-size: 10px; font-family: var(--mono); color: var(--text-3); }
-
-  .vc-divider { height: 1px; background: var(--border); margin: 4px 0; }
+  /* PAGE TITLE */
+  .vc-page-title { font-size: 26px; font-weight: 300; color: var(--text-1); letter-spacing: -0.5px; }
+  .vc-page-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
 `;
 
-const NAV = [
-  { icon: "layout-dashboard", label: "Overview",     badge: null,  badgeColor: "blue",  active: true  },
-  { icon: "calendar",         label: "Appointments", badge: "12",  badgeColor: "blue",  active: false },
-  { icon: "users",            label: "Patients",     badge: null,  badgeColor: null,    active: false },
-  { icon: "message-circle",  label: "WhatsApp Bot",  badge: "Live",badgeColor: "green", active: false },
-];
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
-const NAV2 = [
-  { icon: "file-text",  label: "Records",   badge: null, badgeColor: null  },
-  { icon: "receipt",    label: "Billing",   badge: "3",  badgeColor: "amber" },
-  { icon: "chart-bar",  label: "Analytics", badge: null, badgeColor: null  },
-];
+  const [tab, setTab] = useState('today');
+  const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [allPrescriptions, setAllPrescriptions] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [medicines, setMedicines] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [showPrescription, setShowPrescription] = useState(false);
+  const [showWalkIn, setShowWalkIn] = useState(false);
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInAge, setWalkInAge] = useState('');
+  const [selectedMedicines, setSelectedMedicines] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [frequency, setFrequency] = useState({});
+  const [duration, setDuration] = useState({});
+  const [searchMed, setSearchMed] = useState('');
+  const [searchPatient, setSearchPatient] = useState('');
 
-const STATS = [
-  { label: "Today's Patients", value: "18",    unit: "today",  change: <>↑ 4 from yesterday</>,    iconClass: "blue",  icon: "users"          },
-  { label: "Pending Confirm",  value: "5",     unit: "slots",  change: <span className="vc-warn">Needs action</span>, iconClass: "amber", icon: "clock" },
-  { label: "Revenue Today",    value: "4,200", unit: "₹",      change: <>↑ 12% vs last week</>,     iconClass: "green", icon: "coin-rupee"    },
-  { label: "Bot Messages",     value: "47",    unit: "msgs",   change: <>23 auto-resolved</>,        iconClass: "green", icon: "message-circle" },
-];
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-const PATIENTS = [
-  { init: "AK", color: "ma-blue",   name: "Anjali K.",  age: "F · 34", complaint: "Fever + Cough",      time: "09:00", status: "confirmed", via: "WhatsApp", viaColor: "var(--green)" },
-  { init: "RM", color: "ma-amber",  name: "Ravi M.",    age: "M · 52", complaint: "BP Checkup",         time: "09:30", status: "confirmed", via: "WhatsApp", viaColor: "var(--green)" },
-  { init: "SP", color: "ma-purple", name: "Sunita P.",  age: "F · 27", complaint: "Routine Visit",      time: "10:15", status: "pending",   via: "Walk-in",  viaColor: "var(--text-3)" },
-  { init: "DK", color: "ma-green",  name: "Deepak K.",  age: "M · 41", complaint: "Diabetes Follow-up", time: "11:00", status: "confirmed", via: "WhatsApp", viaColor: "var(--green)" },
-  { init: "NG", color: "ma-red",    name: "Nisha G.",   age: "F · 19", complaint: "Skin Rash",          time: "11:30", status: "cancelled", via: "Walk-in",  viaColor: "var(--text-3)" },
-];
+  useEffect(() => {
+    if (session) {
+      fetchAppointments();
+      fetchPatients();
+      fetchMedicines();
+      fetchAllPrescriptions();
+    }
+  }, [session]);
 
-const SCHEDULE_MORNING = [
-  { time: "9:00",  name: "Anjali K.",  type: "Fever + Cough",       dur: "30m",   color: "var(--accent)" },
-  { time: "9:30",  name: "Ravi M.",    type: "BP Checkup",          dur: "20m",   color: "var(--amber)"  },
-  { time: "10:15", name: "Sunita P.",  type: "Routine Visit",       dur: "15m",   color: "var(--text-3)" },
-];
+  async function fetchAppointments() {
+    const { data } = await supabase.from('Appointments').select('*').order('appointment_date', { ascending: true }).order('created_at', { ascending: true });
+    setAppointments(data || []);
+  }
+  async function fetchPatients() {
+    const { data } = await supabase.from('patients').select('*').order('last_visit', { ascending: false });
+    setPatients(data || []);
+  }
+  async function fetchMedicines() {
+    const { data } = await supabase.from('medicines').select('*').order('name');
+    setMedicines(data || []);
+  }
+  async function fetchAllPrescriptions() {
+    const { data } = await supabase.from('prescriptions').select('*').order('created_at', { ascending: false });
+    setAllPrescriptions(data || []);
+  }
+  async function fetchPrescriptions(patientId) {
+    const { data } = await supabase.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false });
+    setPrescriptions(data || []);
+  }
 
-const SCHEDULE_LATE = [
-  { time: "11:00", name: "Deepak K.", type: "Diabetes Follow-up",   dur: "30m",   color: "var(--green)" },
-  { time: "11:30", name: "Nisha G.",  type: "Skin Rash",            dur: "Canc.", color: "var(--red)"   },
-];
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoginError('Incorrect email or password.');
+    setLoginLoading(false);
+  }
 
-const SCHEDULE_AFTERNOON = [
-  { time: "2:00", name: "Meena S.", type: "Thyroid Review",         dur: "25m",   color: "var(--accent)" },
-];
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
 
-function Icon({ name, size = 16, style }) {
-  return <i className={`ti ti-${name}`} style={{ fontSize: size, ...style }} aria-hidden="true" />;
-}
+  async function updateStatus(id, status, apt) {
+    await supabase.from('Appointments').update({ status }).eq('id', id);
+    if (status === 'accepted') {
+      try {
+        await fetch('https://varcare.onrender.com/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: apt.phone, name: apt.name, time: apt.time, doctorName: 'Dr. Sharma' })
+        });
+      } catch (e) { console.error(e); }
+      const { data: existing } = await supabase.from('patients').select('*').eq('phone', apt.phone).single();
+      if (existing) {
+        await supabase.from('patients').update({ last_visit: new Date().toISOString(), visit_count: (existing.visit_count || 0) + 1 }).eq('phone', apt.phone);
+      } else {
+        await supabase.from('patients').insert([{ name: apt.name, phone: apt.phone, age: apt.age, last_visit: new Date().toISOString(), visit_count: 1 }]);
+      }
+    }
+    fetchAppointments();
+    fetchPatients();
+  }
 
-export default function VarcareDashboard() {
-  const [activeNav, setActiveNav] = useState("Overview");
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  async function addWalkIn() {
+    if (!walkInName.trim()) return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    await supabase.from('Appointments').insert([{
+      name: walkInName, phone: 'walkin', time: `Today ${now}`,
+      appointment_date: today, age: walkInAge || null, consent: true, status: 'accepted'
+    }]);
+    setWalkInName(''); setWalkInAge(''); setShowWalkIn(false);
+    fetchAppointments(); fetchPatients();
+  }
+
+  function toggleMedicine(med) {
+    const exists = selectedMedicines.find(m => m.id === med.id);
+    if (exists) {
+      setSelectedMedicines(selectedMedicines.filter(m => m.id !== med.id));
+    } else {
+      setSelectedMedicines([...selectedMedicines, med]);
+      setFrequency(f => ({ ...f, [med.id]: 'twice daily' }));
+      setDuration(d => ({ ...d, [med.id]: '5 days' }));
+    }
+  }
+
+  async function savePrescription() {
+    if (selectedMedicines.length === 0) return;
+    const medicineText = selectedMedicines.map(m =>
+      `${m.name} ${m.dosage} — ${frequency[m.id] || 'twice daily'} for ${duration[m.id] || '5 days'}`
+    ).join('\n');
+    await supabase.from('prescriptions').insert([{
+      patient_id: selectedPatient.id, patient_name: selectedPatient.name,
+      patient_phone: selectedPatient.phone, medicines: medicineText, notes
+    }]);
+    setShowPrescription(false); setSelectedMedicines([]); setNotes('');
+    fetchPrescriptions(selectedPatient.id); fetchAllPrescriptions();
+    alert('Prescription saved!');
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayApts = appointments.filter(a => a.appointment_date === todayStr);
+  const pendingApts = appointments.filter(a => !a.status || a.status === 'pending');
+  const nextPatient = todayApts.find(a => a.status === 'accepted' || a.status === 'pending');
+  const filteredPatients = patients.filter(p => p.name.toLowerCase().includes(searchPatient.toLowerCase()));
+
+  if (authLoading) return (
+    <>
+      <style>{styles}</style>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-3)', fontFamily: 'var(--font)' }}>Loading...</div>
+    </>
+  );
+
+  // LOGIN
+  if (!session) return (
+    <>
+      <style>{styles}</style>
+      <div className="vc-login">
+        <div>
+          <div className="vc-login-logo">Varcare</div>
+          <div className="vc-login-sub">Less chaos. More care.</div>
+        </div>
+        <div className="vc-login-form">
+          <div>
+            <div className="vc-field-label">Email</div>
+            <input className="vc-input" type="email" placeholder="doctor@example.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin(e)} />
+          </div>
+          <div>
+            <div className="vc-field-label">Password</div>
+            <input className="vc-input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin(e)} />
+          </div>
+          {loginError && <div className="vc-error">{loginError}</div>}
+          <button className="vc-btn-primary" onClick={handleLogin} disabled={loginLoading}>
+            {loginLoading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 32, fontSize: 11, color: 'var(--text-3)' }}>Secure clinic management</div>
+      </div>
+    </>
+  );
+
+  // PRESCRIPTION BUILDER
+  if (showPrescription) {
+    const filtered = medicines.filter(m => m.name.toLowerCase().includes(searchMed.toLowerCase()));
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="vc-app" style={{ paddingBottom: 40 }}>
+          <div className="vc-back-header">
+            <button className="vc-back-btn" onClick={() => setShowPrescription(false)}>← Back</button>
+            <div className="vc-detail-name">New Prescription</div>
+            <div className="vc-detail-sub">{selectedPatient.name}{selectedPatient.age ? `, ${selectedPatient.age} yrs` : ''}</div>
+          </div>
+          <div className="vc-content">
+            <input className="vc-input" style={{ marginBottom: 16 }} placeholder="Search medicines..." value={searchMed} onChange={e => setSearchMed(e.target.value)} />
+            <div className="vc-section">Medicines</div>
+            {filtered.map(med => {
+              const sel = selectedMedicines.find(m => m.id === med.id);
+              return (
+                <div key={med.id} className={`vc-med-card${sel ? ' selected' : ''}`}>
+                  <div className="vc-med-row">
+                    <div>
+                      <div className="vc-med-name">{med.name} <span className="vc-med-dose">{med.dosage}</span></div>
+                      <div className="vc-med-unit">{med.unit}</div>
+                    </div>
+                    <button className={`vc-btn-add${sel ? ' added' : ''}`} onClick={() => toggleMedicine(med)}>
+                      {sel ? 'Added' : 'Add'}
+                    </button>
+                  </div>
+                  {sel && (
+                    <div className="vc-med-selects">
+                      <div>
+                        <div className="vc-select-label">Frequency</div>
+                        <select className="vc-select" value={frequency[med.id]} onChange={e => setFrequency(f => ({ ...f, [med.id]: e.target.value }))}>
+                          <option>once daily</option><option>twice daily</option><option>three times daily</option>
+                          <option>at night</option><option>before food</option><option>after food</option><option>SOS</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div className="vc-select-label">Duration</div>
+                        <select className="vc-select" value={duration[med.id]} onChange={e => setDuration(d => ({ ...d, [med.id]: e.target.value }))}>
+                          <option>3 days</option><option>5 days</option><option>7 days</option><option>10 days</option>
+                          <option>14 days</option><option>1 month</option><option>3 months</option><option>ongoing</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {selectedMedicines.length > 0 && (
+              <>
+                <div className="vc-selected-summary">
+                  <div className="vc-section" style={{ margin: '0 0 8px' }}>Selected — {selectedMedicines.length}</div>
+                  {selectedMedicines.map(m => (
+                    <div key={m.id} className="vc-selected-line">
+                      <strong>{m.name} {m.dosage}</strong> <span style={{ color: 'var(--text-3)' }}>— {frequency[m.id]} for {duration[m.id]}</span>
+                    </div>
+                  ))}
+                </div>
+                <textarea className="vc-textarea" style={{ marginBottom: 14 }} placeholder="Doctor notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} />
+                <button className="vc-btn-primary" onClick={savePrescription}>Save Prescription</button>
+              </>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // PATIENT DETAIL
+  if (selectedPatient) {
+    const patientApts = appointments.filter(a => a.phone === selectedPatient.phone);
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="vc-app" style={{ paddingBottom: 40 }}>
+          <div className="vc-back-header">
+            <button className="vc-back-btn" onClick={() => setSelectedPatient(null)}>← Back</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div className="vc-detail-name">{selectedPatient.name}</div>
+                {selectedPatient.age && <div className="vc-detail-sub">Age {selectedPatient.age}</div>}
+                <div className="vc-detail-sub">{selectedPatient.phone?.replace('whatsapp:+91', '+91 ')}</div>
+              </div>
+              <div className="vc-visit-badge">
+                <div className="vc-visit-num">{selectedPatient.visit_count}</div>
+                <div className="vc-visit-lbl">visits</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 10 }}>
+              Last visit {new Date(selectedPatient.last_visit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          </div>
+          <div className="vc-content">
+            <button className="vc-btn-primary" onClick={() => { fetchPrescriptions(selectedPatient.id); setShowPrescription(true); }}>
+              + New Prescription
+            </button>
+            <div className="vc-section">Past Prescriptions</div>
+            {prescriptions.length === 0
+              ? <EmptyCard text="No prescriptions yet" />
+              : prescriptions.map(p => (
+                <div key={p.id} className="vc-rx-card">
+                  <div className="vc-rx-date">{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                  {p.medicines.split('\n').map((line, i) => <div key={i} className="vc-rx-line">{line}</div>)}
+                  {p.notes && <div className="vc-rx-notes">{p.notes}</div>}
+                </div>
+              ))}
+            <div className="vc-section">Visit History</div>
+            {patientApts.length === 0
+              ? <EmptyCard text="No visits recorded" />
+              : patientApts.map(apt => (
+                <div key={apt.id} className="vc-card">
+                  <div className="vc-card-row">
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{apt.time}</div>
+                      <div className="vc-patient-sub">{new Date(apt.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                    </div>
+                    <StatusPill status={apt.status} />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{styles}</style>
-      <div className="vc-shell">
+      <div className="vc-app">
 
-        {/* SIDEBAR */}
-        <aside className="vc-sidebar">
-          <div className="vc-logo-wrap">
-            <div className="vc-logo">
-              <div className="vc-logo-mark">
-                <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M8 12h8M12 8v8"/></svg>
+        {/* WALK-IN MODAL */}
+        {showWalkIn && (
+          <div className="vc-modal-overlay">
+            <div className="vc-modal">
+              <div className="vc-modal-handle" />
+              <div className="vc-modal-title">Walk-in Patient</div>
+              <div className="vc-modal-sub">Added to today's queue immediately</div>
+              <div className="vc-modal-field">
+                <div className="vc-field-label">Patient Name</div>
+                <input className="vc-input" placeholder="Enter name" value={walkInName} onChange={e => setWalkInName(e.target.value)} autoFocus />
               </div>
-              <div>
-                <div className="vc-logo-name">Varcare</div>
-                <div className="vc-logo-sub">Clinic OS</div>
+              <div className="vc-modal-field">
+                <div className="vc-field-label">Age (optional)</div>
+                <input className="vc-input" placeholder="e.g. 35" value={walkInAge} onChange={e => setWalkInAge(e.target.value)} />
               </div>
-            </div>
-          </div>
-
-          <div className="vc-nav-section">
-            <div className="vc-nav-label">Main</div>
-            {NAV.map(n => (
-              <div
-                key={n.label}
-                className={`vc-nav-item${activeNav === n.label ? " active" : ""}`}
-                onClick={() => setActiveNav(n.label)}
-              >
-                <Icon name={n.icon} size={16} />
-                {n.label}
-                {n.badge && <span className={`vc-badge ${n.badgeColor || ""}`}>{n.badge}</span>}
-              </div>
-            ))}
-          </div>
-
-          <div className="vc-nav-section">
-            <div className="vc-nav-label">Clinic</div>
-            {NAV2.map(n => (
-              <div
-                key={n.label}
-                className={`vc-nav-item${activeNav === n.label ? " active" : ""}`}
-                onClick={() => setActiveNav(n.label)}
-              >
-                <Icon name={n.icon} size={16} />
-                {n.label}
-                {n.badge && <span className={`vc-badge ${n.badgeColor || ""}`}>{n.badge}</span>}
-              </div>
-            ))}
-          </div>
-
-          <div className="vc-nav-section">
-            <div className="vc-nav-label">System</div>
-            <div className="vc-nav-item"><Icon name="settings" size={16} /> Settings</div>
-          </div>
-
-          <div className="vc-sidebar-footer">
-            <div className="vc-doctor-card">
-              <div className="vc-avatar">DR</div>
-              <div>
-                <div className="vc-doctor-name">Dr. Ramesh</div>
-                <div className="vc-doctor-role">General Physician</div>
-              </div>
-              <Icon name="chevron-right" size={14} style={{ color: "var(--text-3)", marginLeft: "auto" }} />
-            </div>
-          </div>
-        </aside>
-
-        {/* MAIN */}
-        <main className="vc-main">
-          <div className="vc-topbar">
-            <div>
-              <div className="vc-page-title">Good morning, Doctor</div>
-              <div className="vc-page-date">{today}</div>
-            </div>
-            <div className="vc-topbar-right">
-              <div className="vc-search">
-                <Icon name="search" size={15} style={{ color: "var(--text-3)" }} />
-                <span>Search patients...</span>
-              </div>
-              <div className="vc-icon-btn">
-                <Icon name="bell" size={16} />
-                <div className="vc-notif-dot" />
-              </div>
-              <div className="vc-icon-btn">
-                <Icon name="help-circle" size={16} />
+              <div className="vc-modal-btns">
+                <button className="vc-btn-cancel" onClick={() => setShowWalkIn(false)}>Cancel</button>
+                <button className="vc-btn-primary" style={{ margin: 0 }} onClick={addWalkIn}>Add Patient</button>
               </div>
             </div>
           </div>
+        )}
 
-          <div className="vc-content">
-
-            {/* STATS */}
-            <div className="vc-stats-row">
-              {STATS.map(s => (
-                <div className="vc-stat-card" key={s.label}>
-                  <div className="vc-stat-top">
-                    <div className="vc-stat-label">{s.label}</div>
-                    <div className={`vc-stat-icon ${s.iconClass}`}>
-                      <Icon name={s.icon} size={14} />
+        {/* TODAY TAB */}
+        {tab === 'today' && (
+          <>
+            <div className="vc-header">
+              <div className="vc-header-row">
+                <div>
+                  <div className="vc-brand">Varcare</div>
+                  <div className="vc-greeting">Good {getTimeOfDay()}, Doctor</div>
+                </div>
+                <button className="vc-signout" onClick={handleLogout}>Sign out</button>
+              </div>
+              <div className="vc-stat-row">
+                <div className="vc-stat"><div className="vc-stat-val" style={{ color: 'var(--accent)' }}>{todayApts.length}</div><div className="vc-stat-lbl">Today</div></div>
+                <div className="vc-stat"><div className="vc-stat-val">{appointments.length}</div><div className="vc-stat-lbl">Total</div></div>
+                <div className="vc-stat"><div className="vc-stat-val">{patients.length}</div><div className="vc-stat-lbl">Patients</div></div>
+              </div>
+            </div>
+            <div className="vc-content">
+              {pendingApts.length > 0 && (
+                <div className="vc-pending-alert">
+                  <div className="vc-pending-dot" />
+                  {pendingApts.length} pending request{pendingApts.length > 1 ? 's' : ''} need your attention
+                </div>
+              )}
+              {nextPatient && (
+                <>
+                  <div className="vc-section">Next Patient</div>
+                  <div className="vc-next-card">
+                    <div className="vc-next-name">{nextPatient.name}{nextPatient.age ? <span style={{ fontSize: 14, fontWeight: 300, color: 'var(--text-3)' }}>, {nextPatient.age} yrs</span> : ''}</div>
+                    <div className="vc-next-time">{nextPatient.time}</div>
+                    {(!nextPatient.status || nextPatient.status === 'pending') && (
+                      <div className="vc-btn-grid">
+                        <button className="vc-btn-accept" onClick={() => updateStatus(nextPatient.id, 'accepted', nextPatient)}>Accept</button>
+                        <button className="vc-btn-reject" onClick={() => updateStatus(nextPatient.id, 'rejected', nextPatient)}>Reject</button>
+                      </div>
+                    )}
+                    {nextPatient.status === 'accepted' && <div className="vc-confirmed-badge">Confirmed</div>}
+                  </div>
+                </>
+              )}
+              <div className="vc-section">Today's Queue — {todayApts.length}</div>
+              {todayApts.length === 0
+                ? <EmptyCard text="No appointments today" sub="Tap + to add a walk-in patient" />
+                : todayApts.map(apt => (
+                  <div key={apt.id} className="vc-card">
+                    <div className="vc-card-row">
+                      <div>
+                        <div className="vc-patient-name">{apt.name}{apt.age ? <span className="vc-patient-age">, {apt.age} yrs</span> : ''}</div>
+                        <div className="vc-patient-sub">{apt.time}</div>
+                      </div>
+                      <StatusPill status={apt.status} />
                     </div>
                   </div>
-                  <div className="vc-stat-value">
-                    {s.value}<span className="vc-stat-unit">{s.unit}</span>
-                  </div>
-                  <div className="vc-stat-change">{s.change}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* WA BANNER */}
-            <div className="vc-wa-banner">
-              <div className="vc-wa-icon">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" stroke="#25D366" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M9.5 9.5s0 3 3 4.5" stroke="#25D366" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div>
-                <div className="vc-wa-title">AI Receptionist Active</div>
-                <div className="vc-wa-sub">Handling bookings, reminders & queries via WhatsApp</div>
-              </div>
-              <div className="vc-wa-right">
-                <div className="vc-pulse-dot" />
-                <div className="vc-wa-stat"><strong>100%</strong> uptime today</div>
-              </div>
-            </div>
-
-            {/* TABLE + SCHEDULE */}
-            <div className="vc-two-col">
-
-              {/* PATIENTS TABLE */}
-              <div className="vc-card">
-                <div className="vc-card-header">
-                  <div className="vc-card-title">Recent Patients</div>
-                  <div className="vc-card-action">View all →</div>
-                </div>
-                <div className="vc-table-head">
-                  {["Patient", "Complaint", "Time", "Status", "Via"].map(h => (
-                    <div className="vc-th" key={h}>{h}</div>
-                  ))}
-                </div>
-                {PATIENTS.map(p => (
-                  <div className="vc-table-row" key={p.name}>
-                    <div className="vc-patient-cell">
-                      <div className={`vc-mini-avatar ${p.color}`}>{p.init}</div>
-                      <div>
-                        <div className="vc-cell-main">{p.name}</div>
-                        <div className="vc-cell-sub">{p.age}</div>
+                ))}
+              {pendingApts.length > 0 && (
+                <>
+                  <div className="vc-section">Pending Requests — {pendingApts.length}</div>
+                  {pendingApts.map(apt => (
+                    <div key={apt.id} className="vc-card" style={{ borderColor: 'var(--amber-border)' }}>
+                      <div className="vc-card-row" style={{ marginBottom: 12 }}>
+                        <div>
+                          <div className="vc-patient-name">{apt.name}{apt.age ? <span className="vc-patient-age">, {apt.age} yrs</span> : ''}</div>
+                          <div className="vc-patient-sub">{apt.time}</div>
+                          <div className="vc-patient-sub">{apt.phone?.replace('whatsapp:+91', '+91 ')}</div>
+                        </div>
+                        <StatusPill status={apt.status} />
+                      </div>
+                      <div className="vc-btn-grid">
+                        <button className="vc-btn-accept" onClick={() => updateStatus(apt.id, 'accepted', apt)}>Accept</button>
+                        <button className="vc-btn-reject" onClick={() => updateStatus(apt.id, 'rejected', apt)}>Reject</button>
                       </div>
                     </div>
-                    <div className="vc-cell-main">{p.complaint}</div>
-                    <div className="vc-cell-mono">{p.time}</div>
-                    <div><span className={`vc-status ${p.status}`}>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></div>
-                    <div className="vc-cell-sub" style={{ color: p.viaColor }}>{p.via}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* SCHEDULE */}
-              <div className="vc-card">
-                <div className="vc-card-header">
-                  <div className="vc-card-title">Today's Schedule</div>
-                  <div className="vc-card-action">+ Add slot</div>
-                </div>
-
-                <div className="vc-sched-label">Morning</div>
-                {SCHEDULE_MORNING.map(s => (
-                  <div className="vc-appt-slot" key={s.time + s.name}>
-                    <div className="vc-time">{s.time}</div>
-                    <div className="vc-appt-bar" style={{ background: s.color }} />
-                    <div>
-                      <div className="vc-appt-name">{s.name}</div>
-                      <div className="vc-appt-type">{s.type}</div>
-                    </div>
-                    <div className="vc-appt-dur">{s.dur}</div>
-                  </div>
-                ))}
-
-                <div className="vc-divider" />
-                <div className="vc-sched-label">Late Morning</div>
-                {SCHEDULE_LATE.map(s => (
-                  <div className="vc-appt-slot" key={s.time + s.name}>
-                    <div className="vc-time">{s.time}</div>
-                    <div className="vc-appt-bar" style={{ background: s.color }} />
-                    <div>
-                      <div className="vc-appt-name">{s.name}</div>
-                      <div className="vc-appt-type">{s.type}</div>
-                    </div>
-                    <div className="vc-appt-dur">{s.dur}</div>
-                  </div>
-                ))}
-
-                <div className="vc-divider" />
-                <div className="vc-sched-label">Afternoon</div>
-                {SCHEDULE_AFTERNOON.map(s => (
-                  <div className="vc-appt-slot" key={s.time + s.name}>
-                    <div className="vc-time">{s.time}</div>
-                    <div className="vc-appt-bar" style={{ background: s.color }} />
-                    <div>
-                      <div className="vc-appt-name">{s.name}</div>
-                      <div className="vc-appt-type">{s.type}</div>
-                    </div>
-                    <div className="vc-appt-dur">{s.dur}</div>
-                  </div>
-                ))}
-              </div>
-
+                  ))}
+                </>
+              )}
             </div>
-          </div>
-        </main>
+            <button className="vc-fab" onClick={() => setShowWalkIn(true)}>+</button>
+          </>
+        )}
+
+        {/* PATIENTS TAB */}
+        {tab === 'patients' && (
+          <>
+            <div className="vc-header">
+              <div className="vc-page-title">Patients</div>
+              <div className="vc-page-sub">{patients.length} registered</div>
+            </div>
+            <div className="vc-content">
+              <input className="vc-input" style={{ marginBottom: 14 }} placeholder="Search patients..." value={searchPatient} onChange={e => setSearchPatient(e.target.value)} />
+              {filteredPatients.length === 0
+                ? <EmptyCard text="No patients yet" sub="Accept an appointment to register" />
+                : filteredPatients.map(patient => (
+                  <div key={patient.id} className="vc-card" style={{ cursor: 'pointer' }}
+                    onClick={() => { setSelectedPatient(patient); fetchPrescriptions(patient.id); }}>
+                    <div className="vc-card-row">
+                      <div>
+                        <div className="vc-patient-name">{patient.name}{patient.age ? <span className="vc-patient-age">, {patient.age} yrs</span> : ''}</div>
+                        <div className="vc-patient-sub">{patient.phone?.replace('whatsapp:+91', '+91 ')}</div>
+                        <div className="vc-patient-sub">Last visit {new Date(patient.last_visit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                      </div>
+                      <div className="vc-visit-badge">
+                        <div className="vc-visit-num">{patient.visit_count}</div>
+                        <div className="vc-visit-lbl">visits</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
+
+        {/* PRESCRIPTIONS TAB */}
+        {tab === 'prescriptions' && (
+          <>
+            <div className="vc-header">
+              <div className="vc-page-title">Prescriptions</div>
+              <div className="vc-page-sub">{allPrescriptions.length} total</div>
+            </div>
+            <div className="vc-content">
+              {allPrescriptions.length === 0
+                ? <EmptyCard text="No prescriptions yet" sub="Open a patient profile to create one" />
+                : allPrescriptions.map(p => (
+                  <div key={p.id} className="vc-rx-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{p.patient_name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                    </div>
+                    {p.medicines.split('\n').map((line, i) => <div key={i} className="vc-rx-line">{line}</div>)}
+                    {p.notes && <div className="vc-rx-notes">{p.notes}</div>}
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
+
+        {/* MORE TAB */}
+        {tab === 'more' && (
+          <>
+            <div className="vc-header">
+              <div className="vc-page-title">More</div>
+            </div>
+            <div className="vc-content">
+              <div className="vc-stats-list">
+                {[
+                  { label: 'Total appointments', value: appointments.length },
+                  { label: 'Accepted', value: appointments.filter(a => a.status === 'accepted').length },
+                  { label: 'Pending', value: pendingApts.length },
+                  { label: 'Rejected', value: appointments.filter(a => a.status === 'rejected').length },
+                  { label: 'Registered patients', value: patients.length },
+                  { label: 'Prescriptions written', value: allPrescriptions.length },
+                ].map((item, i) => (
+                  <div key={i} className="vc-stats-row-item">
+                    <div className="vc-stats-item-label">{item.label}</div>
+                    <div className="vc-stats-item-val">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <button className="vc-btn-signout" onClick={handleLogout}>Sign out</button>
+            </div>
+          </>
+        )}
+
+        {/* BOTTOM NAV */}
+        <div className="vc-bottom-nav">
+          {[
+            { key: 'today', label: 'Today', icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+            { key: 'patients', label: 'Patients', icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+            { key: 'prescriptions', label: 'Rx', icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+            { key: 'more', label: 'More', icon: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> },
+          ].map(t => (
+            <button key={t.key} className={`vc-nav-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.icon}
+              <span className="vc-nav-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );
+}
+
+function StatusPill({ status }) {
+  const map = {
+    accepted: 'confirmed',
+    confirmed: 'confirmed',
+    rejected: 'rejected',
+    cancelled: 'cancelled',
+    pending: 'pending',
+  };
+  const cls = map[status] || 'pending';
+  const label = { confirmed: 'Confirmed', rejected: 'Rejected', cancelled: 'Cancelled', pending: 'Pending' }[cls];
+  return <span className={`vc-pill pill-${cls}`}>{label}</span>;
+}
+
+function EmptyCard({ text, sub }) {
+  return (
+    <div className="vc-empty">
+      <div className="vc-empty-text">{text}</div>
+      {sub && <div className="vc-empty-sub">{sub}</div>}
+    </div>
+  );
+}
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
 }
